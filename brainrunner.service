@@ -1,0 +1,17 @@
+[Unit]
+Description=brainrunner — autonomous GitHub issue agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kourgia
+ExecStart=/usr/local/bin/brainrunner --config /home/kourgia/.config/brainrunner/config.toml
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=brainrunner
+
+[Install]
+WantedBy=multi-user.target

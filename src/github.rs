@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -8,6 +9,7 @@ pub struct Issue {
 
 pub struct GithubClient {
     cwd: PathBuf,
+    extra_path: Option<std::ffi::OsString>,
 }
 
 #[derive(Debug)]
@@ -31,15 +33,30 @@ impl std::error::Error for GithubError {}
 
 impl GithubClient {
     pub fn new(cwd: impl Into<PathBuf>) -> Self {
-        Self { cwd: cwd.into() }
+        Self { cwd: cwd.into(), extra_path: None }
+    }
+
+    pub fn with_extra_path(cwd: impl Into<PathBuf>, extra_path: impl Into<std::ffi::OsString>) -> Self {
+        Self { cwd: cwd.into(), extra_path: Some(extra_path.into()) }
+    }
+
+    pub async fn get_issue_details(&self, issue_n: u64) -> Result<(String, Vec<String>), GithubError> {
+        let out = self.run_gh(&["issue", "view", &issue_n.to_string(), "--json", "body,comments"]).await?;
+        #[derive(serde::Deserialize)]
+        struct Raw {
+            body: String,
+            comments: Vec<Comment>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Comment {
+            body: String,
+        }
+        let raw: Raw = serde_json::from_str(&out).map_err(|e| GithubError::Parse(e.to_string()))?;
+        Ok((raw.body, raw.comments.into_iter().map(|c| c.body).collect()))
     }
 
     pub async fn list_issues_by_label(&self, label: &str) -> Result<Vec<Issue>, GithubError> {
-        let out = run_gh(
-            &self.cwd,
-            &["issue", "list", "--label", label, "--json", "number,title"],
-        )
-        .await?;
+        let out = self.run_gh(&["issue", "list", "--label", label, "--json", "number,title"]).await?;
         parse_issues(&out)
     }
 
@@ -48,30 +65,26 @@ impl GithubClient {
     }
 
     pub async fn apply_label(&self, issue_n: u64, label: &str) -> Result<(), GithubError> {
-        run_gh(
-            &self.cwd,
-            &["issue", "edit", &issue_n.to_string(), "--add-label", label],
-        )
-        .await?;
+        self.run_gh(&["issue", "edit", &issue_n.to_string(), "--add-label", label]).await?;
         Ok(())
     }
 
     pub async fn remove_label(&self, issue_n: u64, label: &str) -> Result<(), GithubError> {
-        run_gh(
-            &self.cwd,
-            &["issue", "edit", &issue_n.to_string(), "--remove-label", label],
-        )
-        .await?;
+        self.run_gh(&["issue", "edit", &issue_n.to_string(), "--remove-label", label]).await?;
         Ok(())
     }
 
     pub async fn push_branch(&self, branch: &str) -> Result<(), GithubError> {
-        let out = tokio::process::Command::new("git")
-            .args(["push", "origin", branch])
-            .current_dir(&self.cwd)
-            .output()
-            .await
-            .map_err(GithubError::Io)?;
+        let mut cmd = tokio::process::Command::new("git");
+        cmd.args(["push", "origin", branch]).current_dir(&self.cwd);
+        if let Some(extra) = &self.extra_path {
+            let current_path = std::env::var_os("PATH").unwrap_or_default();
+            let mut new_path = extra.clone();
+            new_path.push(":");
+            new_path.push(&current_path);
+            cmd.env("PATH", new_path);
+        }
+        let out = cmd.output().await.map_err(GithubError::Io)?;
         if out.status.success() {
             Ok(())
         } else {
@@ -84,12 +97,31 @@ impl GithubClient {
 
     pub async fn open_pr(&self, issue_n: u64, title: &str) -> Result<(), GithubError> {
         let body = format!("Closes #{issue_n}");
-        run_gh(
-            &self.cwd,
-            &["pr", "create", "--title", title, "--body", &body],
-        )
-        .await?;
+        self.run_gh(&["pr", "create", "--title", title, "--body", &body]).await?;
         Ok(())
+    }
+
+    fn run_gh<'a>(&'a self, args: &[&str]) -> impl Future<Output = Result<String, GithubError>> + 'a {
+        let mut cmd = tokio::process::Command::new("gh");
+        cmd.args(args).current_dir(&self.cwd);
+        if let Some(extra) = &self.extra_path {
+            let current_path = std::env::var_os("PATH").unwrap_or_default();
+            let mut new_path = extra.clone();
+            new_path.push(":");
+            new_path.push(&current_path);
+            cmd.env("PATH", new_path);
+        }
+        async move {
+            let out = cmd.output().await.map_err(GithubError::Io)?;
+            if out.status.success() {
+                Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+            } else {
+                Err(GithubError::Gh {
+                    code: out.status.code(),
+                    stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+                })
+            }
+        }
     }
 }
 
@@ -105,22 +137,6 @@ pub(crate) fn parse_issues(json: &str) -> Result<Vec<Issue>, GithubError> {
     Ok(raw.into_iter().map(|r| Issue { number: r.number, title: r.title }).collect())
 }
 
-async fn run_gh(cwd: &std::path::Path, args: &[&str]) -> Result<String, GithubError> {
-    let out = tokio::process::Command::new("gh")
-        .args(args)
-        .current_dir(cwd)
-        .output()
-        .await
-        .map_err(GithubError::Io)?;
-    if out.status.success() {
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-    } else {
-        Err(GithubError::Gh {
-            code: out.status.code(),
-            stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
-        })
-    }
-}
 
 #[cfg(test)]
 mod tests {
