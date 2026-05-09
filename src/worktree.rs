@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn wipe_base_removes_directory_and_noops_if_missing() {
+    async fn wipe_base_removes_directory_and_succeeds_when_missing() {
         let repo = setup_repo();
         let worktree_base = repo.path().join("worktrees");
         std::fs::create_dir_all(worktree_base.join("nested")).unwrap();
