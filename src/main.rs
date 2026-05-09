@@ -1,4 +1,5 @@
 mod config;
+mod github;
 mod prompt;
 mod worktree;
 
