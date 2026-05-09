@@ -34,13 +34,17 @@ impl GithubClient {
         Self { cwd: cwd.into() }
     }
 
-    pub async fn list_ready_issues(&self) -> Result<Vec<Issue>, GithubError> {
+    pub async fn list_issues_by_label(&self, label: &str) -> Result<Vec<Issue>, GithubError> {
         let out = run_gh(
             &self.cwd,
-            &["issue", "list", "--label", "ready-for-agent", "--json", "number,title"],
+            &["issue", "list", "--label", label, "--json", "number,title"],
         )
         .await?;
         parse_issues(&out)
+    }
+
+    pub async fn list_ready_issues(&self) -> Result<Vec<Issue>, GithubError> {
+        self.list_issues_by_label("ready-for-agent").await
     }
 
     pub async fn apply_label(&self, issue_n: u64, label: &str) -> Result<(), GithubError> {
@@ -121,6 +125,14 @@ async fn run_gh(cwd: &std::path::Path, args: &[&str]) -> Result<String, GithubEr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn list_issues_by_label_gh_failure_returns_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let client = GithubClient::new(tmp.path());
+        let result = client.list_issues_by_label("agent-running").await;
+        assert!(matches!(result, Err(GithubError::Gh { .. })));
+    }
 
     #[tokio::test]
     async fn list_ready_issues_gh_failure_returns_error() {
