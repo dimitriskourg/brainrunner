@@ -68,4 +68,4 @@ main() {
     echo "brainrunner is running. Watch logs with: journalctl -fu brainrunner"
 }
 
-[[ "${BASH_SOURCE[0]}" == "${0}" ]] && main "$@"
+main "$@"
