@@ -26,7 +26,7 @@ check_deps() {
 
 prompt_repo() {
     printf 'Which local repo should brainrunner watch? (full path): ' >&2
-    read -r REPO_PATH
+    read -r REPO_PATH </dev/tty
     echo "$REPO_PATH"
 }
 
