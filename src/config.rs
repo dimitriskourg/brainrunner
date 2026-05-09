@@ -26,10 +26,27 @@ fn default_worktree_base() -> String {
     "/tmp/brainrunner-worktrees".to_string()
 }
 
+fn expand_tilde(s: String) -> String {
+    let Ok(home) = std::env::var("HOME") else {
+        return s;
+    };
+    if let Some(rest) = s.strip_prefix("~/") {
+        format!("{home}/{rest}")
+    } else if s == "~" {
+        home
+    } else {
+        s
+    }
+}
+
 pub fn load_config(path: &Path) -> Result<Config, String> {
     let contents = std::fs::read_to_string(path)
         .map_err(|e| format!("cannot read config file {}: {}", path.display(), e))?;
-    toml::from_str(&contents).map_err(|e| format!("invalid config file {}: {}", path.display(), e))
+    let mut cfg: Config = toml::from_str(&contents)
+        .map_err(|e| format!("invalid config file {}: {}", path.display(), e))?;
+    cfg.repo_path = expand_tilde(cfg.repo_path);
+    cfg.worktree_base = expand_tilde(cfg.worktree_base);
+    Ok(cfg)
 }
 
 #[cfg(test)]
@@ -69,6 +86,20 @@ mod tests {
         assert_eq!(cfg.max_iterations, 20);
         assert_eq!(cfg.max_iteration_secs, 1800);
         assert_eq!(cfg.worktree_base, "/tmp/brainrunner-worktrees");
+    }
+
+    #[test]
+    fn tilde_is_expanded_in_repo_path_and_worktree_base() {
+        let home = std::env::var("HOME").expect("HOME must be set for this test");
+        let f = write_toml(&format!(
+            r#"
+            repo_path = "~/projects/foo"
+            worktree_base = "~/worktrees"
+        "#
+        ));
+        let cfg = load_config(f.path()).unwrap();
+        assert_eq!(cfg.repo_path, format!("{home}/projects/foo"));
+        assert_eq!(cfg.worktree_base, format!("{home}/worktrees"));
     }
 
     #[test]
