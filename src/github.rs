@@ -39,16 +39,6 @@ impl GithubClient {
         }
     }
 
-    pub fn with_extra_path(
-        cwd: impl Into<PathBuf>,
-        extra_path: impl Into<std::ffi::OsString>,
-    ) -> Self {
-        Self {
-            cwd: cwd.into(),
-            extra_path: Some(extra_path.into()),
-        }
-    }
-
     pub async fn get_issue_details(
         &self,
         issue_n: u64,

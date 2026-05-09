@@ -21,6 +21,7 @@ impl RalphRunner {
         Self { extra_path: None }
     }
 
+    #[cfg(test)]
     pub fn with_extra_path(extra_path: impl Into<std::ffi::OsString>) -> Self {
         Self {
             extra_path: Some(extra_path.into()),
