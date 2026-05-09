@@ -115,10 +115,17 @@ impl GithubClient {
         }
     }
 
-    pub async fn open_pr(&self, issue_n: u64, title: &str) -> Result<(), GithubError> {
+    pub async fn open_pr(
+        &self,
+        issue_n: u64,
+        title: &str,
+        branch: &str,
+    ) -> Result<(), GithubError> {
         let body = format!("Closes #{issue_n}");
-        self.run_gh(&["pr", "create", "--title", title, "--body", &body])
-            .await?;
+        self.run_gh(&[
+            "pr", "create", "--title", title, "--body", &body, "--head", branch,
+        ])
+        .await?;
         Ok(())
     }
 

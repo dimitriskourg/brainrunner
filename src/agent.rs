@@ -73,7 +73,7 @@ pub async fn run_one(
                 Err(e)
             } else {
                 github
-                    .open_pr(issue.number, &issue.title)
+                    .open_pr(issue.number, &issue.title, &branch)
                     .await
                     .map_err(AgentRunError::Github)?;
                 github
@@ -372,7 +372,7 @@ esac
             "expected agent-done applied, got:\n{calls}"
         );
         assert!(
-            calls.contains("pr create --title Success issue --body Closes #9"),
+            calls.contains("pr create --title Success issue --body Closes #9 --head agent/9"),
             "expected PR opened, got:\n{calls}"
         );
         let worktree_path = env.repo_dir.path().join("worktrees").join("agent-9");
