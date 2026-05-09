@@ -33,15 +33,35 @@ impl std::error::Error for GithubError {}
 
 impl GithubClient {
     pub fn new(cwd: impl Into<PathBuf>) -> Self {
-        Self { cwd: cwd.into(), extra_path: None }
+        Self {
+            cwd: cwd.into(),
+            extra_path: None,
+        }
     }
 
-    pub fn with_extra_path(cwd: impl Into<PathBuf>, extra_path: impl Into<std::ffi::OsString>) -> Self {
-        Self { cwd: cwd.into(), extra_path: Some(extra_path.into()) }
+    pub fn with_extra_path(
+        cwd: impl Into<PathBuf>,
+        extra_path: impl Into<std::ffi::OsString>,
+    ) -> Self {
+        Self {
+            cwd: cwd.into(),
+            extra_path: Some(extra_path.into()),
+        }
     }
 
-    pub async fn get_issue_details(&self, issue_n: u64) -> Result<(String, Vec<String>), GithubError> {
-        let out = self.run_gh(&["issue", "view", &issue_n.to_string(), "--json", "body,comments"]).await?;
+    pub async fn get_issue_details(
+        &self,
+        issue_n: u64,
+    ) -> Result<(String, Vec<String>), GithubError> {
+        let out = self
+            .run_gh(&[
+                "issue",
+                "view",
+                &issue_n.to_string(),
+                "--json",
+                "body,comments",
+            ])
+            .await?;
         #[derive(serde::Deserialize)]
         struct Raw {
             body: String,
@@ -56,7 +76,9 @@ impl GithubClient {
     }
 
     pub async fn list_issues_by_label(&self, label: &str) -> Result<Vec<Issue>, GithubError> {
-        let out = self.run_gh(&["issue", "list", "--label", label, "--json", "number,title"]).await?;
+        let out = self
+            .run_gh(&["issue", "list", "--label", label, "--json", "number,title"])
+            .await?;
         parse_issues(&out)
     }
 
@@ -65,12 +87,20 @@ impl GithubClient {
     }
 
     pub async fn apply_label(&self, issue_n: u64, label: &str) -> Result<(), GithubError> {
-        self.run_gh(&["issue", "edit", &issue_n.to_string(), "--add-label", label]).await?;
+        self.run_gh(&["issue", "edit", &issue_n.to_string(), "--add-label", label])
+            .await?;
         Ok(())
     }
 
     pub async fn remove_label(&self, issue_n: u64, label: &str) -> Result<(), GithubError> {
-        self.run_gh(&["issue", "edit", &issue_n.to_string(), "--remove-label", label]).await?;
+        self.run_gh(&[
+            "issue",
+            "edit",
+            &issue_n.to_string(),
+            "--remove-label",
+            label,
+        ])
+        .await?;
         Ok(())
     }
 
@@ -97,11 +127,15 @@ impl GithubClient {
 
     pub async fn open_pr(&self, issue_n: u64, title: &str) -> Result<(), GithubError> {
         let body = format!("Closes #{issue_n}");
-        self.run_gh(&["pr", "create", "--title", title, "--body", &body]).await?;
+        self.run_gh(&["pr", "create", "--title", title, "--body", &body])
+            .await?;
         Ok(())
     }
 
-    fn run_gh<'a>(&'a self, args: &[&str]) -> impl Future<Output = Result<String, GithubError>> + 'a {
+    fn run_gh<'a>(
+        &'a self,
+        args: &[&str],
+    ) -> impl Future<Output = Result<String, GithubError>> + 'a {
         let mut cmd = tokio::process::Command::new("gh");
         cmd.args(args).current_dir(&self.cwd);
         if let Some(extra) = &self.extra_path {
@@ -131,12 +165,17 @@ pub(crate) fn parse_issues(json: &str) -> Result<Vec<Issue>, GithubError> {
         number: u64,
         title: String,
     }
-    let mut raw: Vec<Raw> = serde_json::from_str(json)
-        .map_err(|e| GithubError::Parse(e.to_string()))?;
+    let mut raw: Vec<Raw> =
+        serde_json::from_str(json).map_err(|e| GithubError::Parse(e.to_string()))?;
     raw.sort_by_key(|r| r.number);
-    Ok(raw.into_iter().map(|r| Issue { number: r.number, title: r.title }).collect())
+    Ok(raw
+        .into_iter()
+        .map(|r| Issue {
+            number: r.number,
+            title: r.title,
+        })
+        .collect())
 }
-
 
 #[cfg(test)]
 mod tests {

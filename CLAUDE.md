@@ -2,6 +2,15 @@
 
 `brainrunner` is a Rust daemon that polls a GitHub repo for issues labeled `ready-for-agent` and runs Claude Code autonomously on each one using the Ralph loop technique. It manages the full lifecycle — worktree creation, iteration loop, PR opening, and label state transitions — on a Raspberry Pi (aarch64).
 
+## Common commands
+
+```bash
+cargo run                                    # build + run
+cargo build --release                        # optimized build
+cargo fmt --check && cargo clippy -- -D warnings  # full lint pass
+cargo fmt                                    # auto-format
+```
+
 ## Agent skills
 
 ### Issue tracker

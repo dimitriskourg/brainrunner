@@ -35,8 +35,14 @@ pub async fn run_one(
 ) -> Result<(), AgentRunError> {
     info!(issue = issue.number, "starting agent run");
 
-    github.apply_label(issue.number, "agent-running").await.map_err(AgentRunError::Github)?;
-    github.remove_label(issue.number, "ready-for-agent").await.map_err(AgentRunError::Github)?;
+    github
+        .apply_label(issue.number, "agent-running")
+        .await
+        .map_err(AgentRunError::Github)?;
+    github
+        .remove_label(issue.number, "ready-for-agent")
+        .await
+        .map_err(AgentRunError::Github)?;
 
     let worktree_path = worktrees
         .create_worktree(issue.number)
@@ -96,10 +102,7 @@ pub async fn run_one(
     result
 }
 
-async fn transition_to_failed(
-    issue_n: u64,
-    github: &GithubClient,
-) -> Result<(), AgentRunError> {
+async fn transition_to_failed(issue_n: u64, github: &GithubClient) -> Result<(), AgentRunError> {
     github
         .remove_label(issue_n, "agent-running")
         .await
@@ -153,8 +156,10 @@ mod tests {
     fn write_fake_gh(dir: &TempDir, call_log: &std::path::Path) {
         let log = call_log.to_str().unwrap();
         let p = dir.path().join("gh");
-        std::fs::write(&p, format!(
-            r#"#!/bin/sh
+        std::fs::write(
+            &p,
+            format!(
+                r#"#!/bin/sh
 echo "$*" >> "{log}"
 case "$1 $2" in
     "issue view")   echo '{{"body":"test body","comments":[]}}' ;;
@@ -164,7 +169,8 @@ case "$1 $2" in
     *)              exit 1 ;;
 esac
 "#
-        ))
+            ),
+        )
         .unwrap();
         std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
@@ -187,7 +193,11 @@ esac
             std::fs::create_dir(&worktree_base).unwrap();
             let bin_dir = tempfile::tempdir().unwrap();
             let call_log = bin_dir.path().join("call_log");
-            TestEnv { repo_dir, bin_dir, call_log }
+            TestEnv {
+                repo_dir,
+                bin_dir,
+                call_log,
+            }
         }
 
         fn worktrees(&self) -> WorktreeManager {
@@ -210,8 +220,20 @@ esac
         write_fake_gh(&env.bin_dir, &env.call_log);
         write_fake_claude(&env.bin_dir, "echo 'no sigil'");
 
-        let issue = Issue { number: 42, title: "Test issue".to_string() };
-        run_one(&issue, &env.worktrees(), &env.github(), &env.runner(), 1, 30).await.ok();
+        let issue = Issue {
+            number: 42,
+            title: "Test issue".to_string(),
+        };
+        run_one(
+            &issue,
+            &env.worktrees(),
+            &env.github(),
+            &env.runner(),
+            1,
+            30,
+        )
+        .await
+        .ok();
 
         let calls = read_calls(&env.call_log);
         assert!(
@@ -226,8 +248,20 @@ esac
         write_fake_gh(&env.bin_dir, &env.call_log);
         write_fake_claude(&env.bin_dir, "echo 'no sigil'");
 
-        let issue = Issue { number: 42, title: "Test issue".to_string() };
-        run_one(&issue, &env.worktrees(), &env.github(), &env.runner(), 1, 30).await.ok();
+        let issue = Issue {
+            number: 42,
+            title: "Test issue".to_string(),
+        };
+        run_one(
+            &issue,
+            &env.worktrees(),
+            &env.github(),
+            &env.runner(),
+            1,
+            30,
+        )
+        .await
+        .ok();
 
         let calls = read_calls(&env.call_log);
         assert!(
@@ -242,8 +276,20 @@ esac
         write_fake_gh(&env.bin_dir, &env.call_log);
         write_fake_claude(&env.bin_dir, "echo 'no sigil'");
 
-        let issue = Issue { number: 7, title: "Test".to_string() };
-        run_one(&issue, &env.worktrees(), &env.github(), &env.runner(), 1, 30).await.ok();
+        let issue = Issue {
+            number: 7,
+            title: "Test".to_string(),
+        };
+        run_one(
+            &issue,
+            &env.worktrees(),
+            &env.github(),
+            &env.runner(),
+            1,
+            30,
+        )
+        .await
+        .ok();
 
         let out = tokio::process::Command::new("git")
             .args(["branch", "--list", "agent/7"])
@@ -252,7 +298,10 @@ esac
             .await
             .unwrap();
         let branches = String::from_utf8_lossy(&out.stdout);
-        assert!(branches.contains("agent/7"), "expected branch agent/7, got: {branches}");
+        assert!(
+            branches.contains("agent/7"),
+            "expected branch agent/7, got: {branches}"
+        );
     }
 
     #[tokio::test]
@@ -261,8 +310,20 @@ esac
         write_fake_gh(&env.bin_dir, &env.call_log);
         write_fake_claude(&env.bin_dir, "exit 1");
 
-        let issue = Issue { number: 5, title: "Failing issue".to_string() };
-        run_one(&issue, &env.worktrees(), &env.github(), &env.runner(), 1, 30).await.ok();
+        let issue = Issue {
+            number: 5,
+            title: "Failing issue".to_string(),
+        };
+        run_one(
+            &issue,
+            &env.worktrees(),
+            &env.github(),
+            &env.runner(),
+            1,
+            30,
+        )
+        .await
+        .ok();
 
         let calls = read_calls(&env.call_log);
         assert!(
@@ -270,7 +331,10 @@ esac
             "expected agent-failed applied, got:\n{calls}"
         );
         let worktree_path = env.repo_dir.path().join("worktrees").join("agent-5");
-        assert!(!worktree_path.exists(), "worktree should be removed after failure");
+        assert!(
+            !worktree_path.exists(),
+            "worktree should be removed after failure"
+        );
     }
 
     #[tokio::test]
@@ -279,12 +343,28 @@ esac
         write_fake_gh(&env.bin_dir, &env.call_log);
         // fake git that succeeds for push (records call and exits 0)
         let fake_git = env.bin_dir.path().join("git");
-        std::fs::write(&fake_git, "#!/bin/sh\necho \"$*\" >> \"$(dirname $0)/git_log\"\nexit 0\n").unwrap();
+        std::fs::write(
+            &fake_git,
+            "#!/bin/sh\necho \"$*\" >> \"$(dirname $0)/git_log\"\nexit 0\n",
+        )
+        .unwrap();
         std::fs::set_permissions(&fake_git, std::fs::Permissions::from_mode(0o755)).unwrap();
         write_fake_claude(&env.bin_dir, "printf '<promise>COMPLETE</promise>'");
 
-        let issue = Issue { number: 9, title: "Success issue".to_string() };
-        run_one(&issue, &env.worktrees(), &env.github(), &env.runner(), 1, 30).await.ok();
+        let issue = Issue {
+            number: 9,
+            title: "Success issue".to_string(),
+        };
+        run_one(
+            &issue,
+            &env.worktrees(),
+            &env.github(),
+            &env.runner(),
+            1,
+            30,
+        )
+        .await
+        .ok();
 
         let calls = read_calls(&env.call_log);
         assert!(
@@ -296,6 +376,9 @@ esac
             "expected PR opened, got:\n{calls}"
         );
         let worktree_path = env.repo_dir.path().join("worktrees").join("agent-9");
-        assert!(!worktree_path.exists(), "worktree should be removed after success");
+        assert!(
+            !worktree_path.exists(),
+            "worktree should be removed after success"
+        );
     }
 }

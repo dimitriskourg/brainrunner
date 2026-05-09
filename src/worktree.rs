@@ -45,7 +45,13 @@ impl WorktreeManager {
         let worktree_path = self.worktree_base.join(format!("agent-{issue_n}"));
         run_git(
             &self.repo_path,
-            &["worktree", "add", "-b", &branch, worktree_path.to_str().unwrap()],
+            &[
+                "worktree",
+                "add",
+                "-b",
+                &branch,
+                worktree_path.to_str().unwrap(),
+            ],
         )
         .await?;
         Ok(worktree_path)
@@ -55,7 +61,12 @@ impl WorktreeManager {
         let worktree_path = self.worktree_base.join(format!("agent-{issue_n}"));
         run_git(
             &self.repo_path,
-            &["worktree", "remove", "--force", worktree_path.to_str().unwrap()],
+            &[
+                "worktree",
+                "remove",
+                "--force",
+                worktree_path.to_str().unwrap(),
+            ],
         )
         .await
     }
@@ -147,7 +158,10 @@ mod tests {
             .await
             .unwrap();
         let list = String::from_utf8_lossy(&out.stdout);
-        assert!(!list.contains("agent-7"), "worktree should be deregistered, got: {list}");
+        assert!(
+            !list.contains("agent-7"),
+            "worktree should be deregistered, got: {list}"
+        );
     }
 
     #[tokio::test]

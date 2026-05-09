@@ -22,7 +22,10 @@ pub async fn startup_sweep(
     worktrees: &WorktreeManager,
     github: &GithubClient,
 ) -> Result<(), StartupError> {
-    worktrees.wipe_base().await.map_err(StartupError::Worktree)?;
+    worktrees
+        .wipe_base()
+        .await
+        .map_err(StartupError::Worktree)?;
     let running = github
         .list_issues_by_label("agent-running")
         .await
@@ -56,7 +59,10 @@ mod tests {
 
         let _ = startup_sweep(&worktrees, &github).await;
 
-        assert!(!base.exists(), "worktree base should be wiped even if gh fails");
+        assert!(
+            !base.exists(),
+            "worktree base should be wiped even if gh fails"
+        );
     }
 
     #[tokio::test]

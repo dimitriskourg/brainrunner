@@ -13,16 +13,23 @@ pub struct Config {
     pub worktree_base: String,
 }
 
-fn default_poll_interval_secs() -> u64 { 30 }
-fn default_max_iterations() -> u32 { 20 }
-fn default_max_iteration_secs() -> u64 { 1800 }
-fn default_worktree_base() -> String { "/tmp/brainrunner-worktrees".to_string() }
+fn default_poll_interval_secs() -> u64 {
+    30
+}
+fn default_max_iterations() -> u32 {
+    20
+}
+fn default_max_iteration_secs() -> u64 {
+    1800
+}
+fn default_worktree_base() -> String {
+    "/tmp/brainrunner-worktrees".to_string()
+}
 
 pub fn load_config(path: &Path) -> Result<Config, String> {
     let contents = std::fs::read_to_string(path)
         .map_err(|e| format!("cannot read config file {}: {}", path.display(), e))?;
-    toml::from_str(&contents)
-        .map_err(|e| format!("invalid config file {}: {}", path.display(), e))
+    toml::from_str(&contents).map_err(|e| format!("invalid config file {}: {}", path.display(), e))
 }
 
 #[cfg(test)]
@@ -66,13 +73,15 @@ mod tests {
 
     #[test]
     fn loads_config_from_explicit_path() {
-        let f = write_toml(r#"
+        let f = write_toml(
+            r#"
             repo_path = "/home/kourgia/projects/gymnasou"
             poll_interval_secs = 60
             max_iterations = 10
             max_iteration_secs = 900
             worktree_base = "/tmp/custom-worktrees"
-        "#);
+        "#,
+        );
         let cfg = load_config(f.path()).unwrap();
         assert_eq!(cfg.repo_path, "/home/kourgia/projects/gymnasou");
         assert_eq!(cfg.poll_interval_secs, 60);

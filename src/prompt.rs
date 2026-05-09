@@ -34,7 +34,10 @@ mod tests {
     #[test]
     fn prompt_contains_body() {
         let prompt = build_prompt(42, "title", "Detailed description of the problem", &[]);
-        assert!(prompt.contains("Detailed description of the problem"), "got: {prompt}");
+        assert!(
+            prompt.contains("Detailed description of the problem"),
+            "got: {prompt}"
+        );
     }
 
     #[test]
@@ -58,26 +61,52 @@ mod tests {
         let prompt = build_prompt(1, "title", "body", &[]);
         let lower = prompt.to_lowercase();
         assert!(
-            lower.contains("type-check") || lower.contains("typecheck") || lower.contains("type check"),
+            lower.contains("type-check")
+                || lower.contains("typecheck")
+                || lower.contains("type check"),
             "expected type-check instruction, got: {prompt}"
         );
         assert!(
             lower.contains("lint"),
             "expected lint instruction, got: {prompt}"
         );
-        assert!(!lower.contains("pnpm"), "must not hardcode pnpm, got: {prompt}");
-        assert!(!lower.contains("npm run"), "must not hardcode npm run, got: {prompt}");
-        assert!(!lower.contains("yarn"), "must not hardcode yarn, got: {prompt}");
+        assert!(
+            !lower.contains("pnpm"),
+            "must not hardcode pnpm, got: {prompt}"
+        );
+        assert!(
+            !lower.contains("npm run"),
+            "must not hardcode npm run, got: {prompt}"
+        );
+        assert!(
+            !lower.contains("yarn"),
+            "must not hardcode yarn, got: {prompt}"
+        );
     }
 
     #[test]
     fn prompt_does_not_contain_push_or_pr_instructions() {
         let prompt = build_prompt(1, "title", "body", &[]);
         let lower = prompt.to_lowercase();
-        assert!(!lower.contains("git push"), "must not instruct git push, got: {prompt}");
-        assert!(!lower.contains("open a pr"), "must not instruct opening a PR, got: {prompt}");
-        assert!(!lower.contains("create a pr"), "must not instruct creating a PR, got: {prompt}");
-        assert!(!lower.contains("gh pr create"), "must not instruct gh pr create, got: {prompt}");
-        assert!(!lower.contains("pull request"), "must not mention pull request, got: {prompt}");
+        assert!(
+            !lower.contains("git push"),
+            "must not instruct git push, got: {prompt}"
+        );
+        assert!(
+            !lower.contains("open a pr"),
+            "must not instruct opening a PR, got: {prompt}"
+        );
+        assert!(
+            !lower.contains("create a pr"),
+            "must not instruct creating a PR, got: {prompt}"
+        );
+        assert!(
+            !lower.contains("gh pr create"),
+            "must not instruct gh pr create, got: {prompt}"
+        );
+        assert!(
+            !lower.contains("pull request"),
+            "must not mention pull request, got: {prompt}"
+        );
     }
 }

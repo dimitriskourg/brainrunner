@@ -22,7 +22,9 @@ impl RalphRunner {
     }
 
     pub fn with_extra_path(extra_path: impl Into<std::ffi::OsString>) -> Self {
-        Self { extra_path: Some(extra_path.into()) }
+        Self {
+            extra_path: Some(extra_path.into()),
+        }
     }
 
     pub async fn run(
@@ -47,11 +49,7 @@ impl RalphRunner {
                 cmd.env("PATH", new_path);
             }
 
-            match tokio::time::timeout(
-                Duration::from_secs(max_iteration_secs),
-                cmd.output(),
-            )
-            .await
+            match tokio::time::timeout(Duration::from_secs(max_iteration_secs), cmd.output()).await
             {
                 Err(_elapsed) => {
                     info!("claude timed out on iteration {iteration}");
@@ -69,7 +67,10 @@ impl RalphRunner {
 
                     if !output.status.success() {
                         let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-                        info!(code = output.status.code(), "claude process error on iteration {iteration}");
+                        info!(
+                            code = output.status.code(),
+                            "claude process error on iteration {iteration}"
+                        );
                         return RunOutcome::ProcessError {
                             code: output.status.code(),
                             stderr,
@@ -100,11 +101,7 @@ mod tests {
     fn write_fake_claude(dir: &tempfile::TempDir, body: &str) {
         let script_path = dir.path().join("claude");
         std::fs::write(&script_path, format!("#!/bin/sh\n{body}\n")).unwrap();
-        std::fs::set_permissions(
-            &script_path,
-            std::fs::Permissions::from_mode(0o755),
-        )
-        .unwrap();
+        std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
 
     #[tokio::test]
