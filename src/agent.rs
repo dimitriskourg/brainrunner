@@ -63,29 +63,41 @@ pub async fn run_one(
     let result = match outcome {
         RunOutcome::Success => {
             let branch = format!("agent/{}", issue.number);
-            let push_result = github
-                .push_branch(&branch)
+
+            let has_commits = github
+                .branch_has_commits_ahead(&branch, "main")
                 .await
-                .map_err(AgentRunError::Github);
-            if let Err(e) = push_result {
-                warn!(issue = issue.number, "push failed: {e}");
+                .map_err(AgentRunError::Github)?;
+
+            if !has_commits {
+                warn!(issue = issue.number, "agent completed but made no commits");
                 transition_to_failed(issue.number, github).await?;
-                Err(e)
-            } else {
-                github
-                    .open_pr(issue.number, &issue.title, &branch)
-                    .await
-                    .map_err(AgentRunError::Github)?;
-                github
-                    .remove_label(issue.number, "agent-running")
-                    .await
-                    .map_err(AgentRunError::Github)?;
-                github
-                    .apply_label(issue.number, "agent-done")
-                    .await
-                    .map_err(AgentRunError::Github)?;
-                info!(issue = issue.number, "agent run succeeded");
                 Ok(())
+            } else {
+                let push_result = github
+                    .push_branch(&branch)
+                    .await
+                    .map_err(AgentRunError::Github);
+                if let Err(e) = push_result {
+                    warn!(issue = issue.number, "push failed: {e}");
+                    transition_to_failed(issue.number, github).await?;
+                    Err(e)
+                } else {
+                    github
+                        .open_pr(issue.number, &issue.title, &branch)
+                        .await
+                        .map_err(AgentRunError::Github)?;
+                    github
+                        .remove_label(issue.number, "agent-running")
+                        .await
+                        .map_err(AgentRunError::Github)?;
+                    github
+                        .apply_label(issue.number, "agent-done")
+                        .await
+                        .map_err(AgentRunError::Github)?;
+                    info!(issue = issue.number, "agent run succeeded");
+                    Ok(())
+                }
             }
         }
         other => {
@@ -341,11 +353,11 @@ esac
     async fn run_one_success_applies_agent_done_opens_pr_removes_worktree() {
         let env = TestEnv::new().await;
         write_fake_gh(&env.bin_dir, &env.call_log);
-        // fake git that succeeds for push (records call and exits 0)
+        // fake git: records calls, returns "1" for rev-list (simulates commits ahead), exits 0 otherwise
         let fake_git = env.bin_dir.path().join("git");
         std::fs::write(
             &fake_git,
-            "#!/bin/sh\necho \"$*\" >> \"$(dirname $0)/git_log\"\nexit 0\n",
+            "#!/bin/sh\necho \"$*\" >> \"$(dirname $0)/git_log\"\ncase \"$1\" in rev-list) echo 1 ;; esac\nexit 0\n",
         )
         .unwrap();
         std::fs::set_permissions(&fake_git, std::fs::Permissions::from_mode(0o755)).unwrap();

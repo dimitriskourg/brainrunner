@@ -39,6 +39,17 @@ impl GithubClient {
         }
     }
 
+    #[cfg(test)]
+    pub fn with_extra_path(
+        cwd: impl Into<PathBuf>,
+        extra_path: impl Into<std::ffi::OsString>,
+    ) -> Self {
+        Self {
+            cwd: cwd.into(),
+            extra_path: Some(extra_path.into()),
+        }
+    }
+
     pub async fn get_issue_details(
         &self,
         issue_n: u64,
@@ -127,6 +138,36 @@ impl GithubClient {
         ])
         .await?;
         Ok(())
+    }
+
+    pub async fn branch_has_commits_ahead(
+        &self,
+        branch: &str,
+        base: &str,
+    ) -> Result<bool, GithubError> {
+        let mut cmd = tokio::process::Command::new("git");
+        cmd.args(["rev-list", "--count", &format!("{base}..{branch}")])
+            .current_dir(&self.cwd);
+        if let Some(extra) = &self.extra_path {
+            let current_path = std::env::var_os("PATH").unwrap_or_default();
+            let mut new_path = extra.clone();
+            new_path.push(":");
+            new_path.push(&current_path);
+            cmd.env("PATH", new_path);
+        }
+        let out = cmd.output().await.map_err(GithubError::Io)?;
+        if out.status.success() {
+            let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            let count: u32 = s
+                .parse()
+                .map_err(|_| GithubError::Parse(format!("non-integer commit count: {s}")))?;
+            Ok(count > 0)
+        } else {
+            Err(GithubError::Gh {
+                code: out.status.code(),
+                stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+            })
+        }
     }
 
     fn run_gh<'a>(
