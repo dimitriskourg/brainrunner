@@ -41,11 +41,20 @@ impl RalphRunner {
             info!(iteration, "starting claude iteration");
 
             let mut cmd = tokio::process::Command::new("claude");
-            cmd.args(["--permission-mode", "acceptEdits", "-p", prompt])
-                .current_dir(worktree_path)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .kill_on_drop(true);
+            cmd.args([
+                "--permission-mode",
+                "acceptEdits",
+                "--allowedTools",
+                "Bash(git *) Bash(cargo *) Edit Read Write",
+                "--disallowedTools",
+                "Bash(rm *) Bash(git push *)",
+                "-p",
+                prompt,
+            ])
+            .current_dir(worktree_path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
 
             if let Some(extra) = &self.extra_path {
                 let current_path = std::env::var_os("PATH").unwrap_or_default();
