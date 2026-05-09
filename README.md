@@ -31,6 +31,15 @@ max_iteration_secs = 1800
 worktree_base = "/tmp/brainrunner-worktrees"
 ```
 
+## Service management
+
+```bash
+sudo systemctl start brainrunner     # start
+sudo systemctl stop brainrunner      # stop
+sudo systemctl restart brainrunner   # restart
+sudo systemctl disable brainrunner   # prevent start on boot
+```
+
 ## Logs
 
 ```bash
