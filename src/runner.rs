@@ -1,5 +1,7 @@
 use std::path::Path;
+use std::process::Stdio;
 use std::time::Duration;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tracing::{debug, info};
 
 const COMPLETION_SIGIL: &str = "<promise>COMPLETE</promise>";
@@ -40,7 +42,10 @@ impl RalphRunner {
 
             let mut cmd = tokio::process::Command::new("claude");
             cmd.args(["--permission-mode", "acceptEdits", "-p", prompt])
-                .current_dir(worktree_path);
+                .current_dir(worktree_path)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .kill_on_drop(true);
 
             if let Some(extra) = &self.extra_path {
                 let current_path = std::env::var_os("PATH").unwrap_or_default();
@@ -50,8 +55,50 @@ impl RalphRunner {
                 cmd.env("PATH", new_path);
             }
 
-            match tokio::time::timeout(Duration::from_secs(max_iteration_secs), cmd.output()).await
-            {
+            let child = match cmd.spawn() {
+                Ok(c) => c,
+                Err(e) => {
+                    return RunOutcome::ProcessError {
+                        code: None,
+                        stderr: e.to_string(),
+                    };
+                }
+            };
+
+            let run_fut = async move {
+                let mut child = child;
+                let stdout = child.stdout.take().expect("stdout piped");
+                let stderr = child.stderr.take().expect("stderr piped");
+
+                let read_stdout = async {
+                    let mut lines = BufReader::new(stdout).lines();
+                    let mut buf = String::new();
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        info!(%line, "claude");
+                        buf.push_str(&line);
+                        buf.push('\n');
+                    }
+                    buf
+                };
+
+                let read_stderr = async {
+                    let mut lines = BufReader::new(stderr).lines();
+                    let mut buf = String::new();
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        debug!(%line, "claude stderr");
+                        buf.push_str(&line);
+                        buf.push('\n');
+                    }
+                    buf
+                };
+
+                let (stdout_buf, stderr_buf, status_result) =
+                    tokio::join!(read_stdout, read_stderr, child.wait());
+
+                Ok::<_, std::io::Error>((status_result?, stdout_buf, stderr_buf))
+            };
+
+            match tokio::time::timeout(Duration::from_secs(max_iteration_secs), run_fut).await {
                 Err(_elapsed) => {
                     info!("claude timed out on iteration {iteration}");
                     return RunOutcome::Timeout;
@@ -62,18 +109,14 @@ impl RalphRunner {
                         stderr: e.to_string(),
                     };
                 }
-                Ok(Ok(output)) => {
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    debug!(%stdout, "claude stdout");
-
-                    if !output.status.success() {
-                        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+                Ok(Ok((status, stdout, stderr))) => {
+                    if !status.success() {
                         info!(
-                            code = output.status.code(),
+                            code = status.code(),
                             "claude process error on iteration {iteration}"
                         );
                         return RunOutcome::ProcessError {
-                            code: output.status.code(),
+                            code: status.code(),
                             stderr,
                         };
                     }

@@ -19,6 +19,20 @@ cargo fmt --check && cargo clippy -- -D warnings  # full lint pass
 cargo fmt                                    # auto-format
 ```
 
+### Local deploy (no CI wait)
+
+Build and hot-swap the running service in one step:
+
+```bash
+cargo build --release && sudo cp --remove-destination target/release/brainrunner /usr/local/bin/brainrunner && sudo systemctl restart brainrunner
+```
+
+Add this alias to `~/.bashrc` for convenience:
+
+```bash
+alias deploy-brainrunner='cargo build --release && sudo cp --remove-destination target/release/brainrunner /usr/local/bin/brainrunner && sudo systemctl restart brainrunner'
+```
+
 ## Configuration
 
 Config lives at `~/.config/brainrunner/config.toml`:
