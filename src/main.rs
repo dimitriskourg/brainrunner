@@ -1,6 +1,7 @@
 mod config;
 mod github;
 mod prompt;
+mod runner;
 mod worktree;
 
 use clap::Parser;
