@@ -1,4 +1,5 @@
 mod config;
+mod prompt;
 
 use clap::Parser;
 use std::path::PathBuf;
