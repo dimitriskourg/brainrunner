@@ -32,6 +32,10 @@ _Avoid_: recovery, cleanup
 One of four labels that represent an issue's position in the brainrunner lifecycle: `ready-for-agent`, `agent-running`, `agent-done`, `agent-failed`.
 _Avoid_: status, phase
 
+**Epic**:
+A GitHub issue carrying the `epic` label, created by `to-prd`. Represents a planning artifact (PRD) that is broken into sub-issues by `to-issues`. An Epic is never picked up by brainrunner; it remains open as a progress tracker until all sub-issues complete.
+_Avoid_: megaticket, parent issue, PRD issue
+
 ## Relationships
 
 - A **Poll Cycle** picks at most one **Issue State** `ready-for-agent`, choosing the lowest issue number when multiple exist
