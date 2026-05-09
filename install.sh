@@ -50,7 +50,9 @@ install_binary() {
 
 install_service() {
     local unit_dest="$SYSTEMD_DIR/brainrunner.service"
-    sudo curl -fsSL -o "$unit_dest" "$RAW_BASE/brainrunner.service"
+    curl -fsSL "$RAW_BASE/brainrunner.service" \
+        | sed -e "s|@HOME@|$HOME|g" -e "s|@USER@|$(id -un)|g" \
+        | sudo tee "$unit_dest" > /dev/null
     sudo systemctl daemon-reload
     sudo systemctl enable --now brainrunner
 }

@@ -5,8 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=kourgia
-ExecStart=/usr/local/bin/brainrunner --config /home/kourgia/.config/brainrunner/config.toml
+User=@USER@
+Environment="PATH=@HOME@/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/usr/local/bin/brainrunner --config @HOME@/.config/brainrunner/config.toml
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
