@@ -1,0 +1,29 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "enabledPlugins": {
+    "code-simplifier@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true
+  },
+  "plansDirectory": "./plans",
+  "allow": [
+    "Read",
+    "Glob",
+    "Grep",
+    "Bash(git *)",
+    "Bash(pnpm test *)",
+    "Bash(pnpm build *)",
+    "Bash(pnpm lint *)"
+  ],
+  "deny": [
+    "Bash(rm *)",
+    "Bash(git push *)",
+    "Bash(curl *)",
+    "Read(./.env)",
+    "Read(./.env.*)",
+    "Read(./secrets/**)"
+  ]
+}
