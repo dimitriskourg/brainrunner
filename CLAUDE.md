@@ -11,6 +11,14 @@ cargo fmt --check && cargo clippy -- -D warnings  # full lint pass
 cargo fmt                                    # auto-format
 ```
 
+Before marking any task complete, run the full lint pass and confirm the project builds successfully:
+
+```bash
+cargo fmt --check && cargo clippy -- -D warnings && cargo build
+```
+
+Fix all errors and warnings before finishing.
+
 ## Agent skills
 
 ### Issue tracker
